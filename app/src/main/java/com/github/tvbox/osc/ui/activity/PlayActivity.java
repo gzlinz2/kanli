@@ -187,9 +187,9 @@ public class PlayActivity extends BaseActivity {
         }
     }
 
-    //  takagen99
+    /* takagen99 */
     @Override
-    public void onUserLeaveHint () {
+    public void onUserLeaveHint() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             PictureInPictureParams pictureInPictureParams = new PictureInPictureParams.Builder().build();
             enterPictureInPictureMode(pictureInPictureParams);
@@ -233,21 +233,25 @@ public class PlayActivity extends BaseActivity {
         }
     }
 
-    //  takagen99
+    /* takagen99 */
     @Override
     protected void onPause() {
         super.onPause();
-        // If called while in PiP mode, do not pause playback
-        if (isInPictureInPictureMode()) {
-            // Continue playback
-            mVideoView.resume();
-        } else {
-            // Use existing playback logic for paused Activity behavior.
-            if (mVideoView != null) {
+        if (mVideoView != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (isInPictureInPictureMode()) {
+                    // Continue playback
+                    mVideoView.resume();
+                } else {
+                    // Pause playback
+                    mVideoView.pause();
+                }
+            } else {
                 mVideoView.pause();
             }
         }
     }
+
 
     @Override
     protected void onDestroy() {
