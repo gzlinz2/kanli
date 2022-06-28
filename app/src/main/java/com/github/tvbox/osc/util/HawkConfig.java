@@ -16,4 +16,5 @@ public class HawkConfig {
     public static final String LIVE_CHANNEL = "last_live_channel_name";
     public static final String PLAY_TYPE = "play_type";//0 系统；1 ijk；2 exo
     public static final String PLAY_RENDER = "play_render"; //0 texture 2
+    public static final String HOT_VOD_SOURCE = "hot_vod_source"; // 0 history 1 douban
 }
