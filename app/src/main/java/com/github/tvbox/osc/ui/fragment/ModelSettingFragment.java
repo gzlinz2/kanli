@@ -45,6 +45,7 @@ public class ModelSettingFragment extends BaseLazyFragment {
     private TextView tvXWalkDown;
     private TextView tvApi;
     private TextView tvHomeApi;
+    private TextView tvHotVodSource;
 
     public static ModelSettingFragment newInstance() {
         return new ModelSettingFragment().setArguments();
@@ -69,6 +70,7 @@ public class ModelSettingFragment extends BaseLazyFragment {
         tvXWalkDown = findViewById(R.id.tvXWalkDown);
         tvApi = findViewById(R.id.tvApi);
         tvHomeApi = findViewById(R.id.tvHomeApi);
+        tvHotVodSource = findViewById(R.id.tvHotVodSource);
         tvMediaCodec.setText(Hawk.get(HawkConfig.IJK_CODEC, ""));
         tvDebugOpen.setText(Hawk.get(HawkConfig.DEBUG_OPEN, false) ? "已打开" : "已关闭");
         tvParseWebView.setText(Hawk.get(HawkConfig.PARSE_WEBVIEW, true) ? "系统自带" : "XWalkView");
@@ -77,6 +79,7 @@ public class ModelSettingFragment extends BaseLazyFragment {
         tvHomeApi.setText(ApiConfig.get().getHomeSourceBean().getName());
         tvPlay.setText(getPlayerName(Hawk.get(HawkConfig.PLAY_TYPE, 0)));
         tvRender.setText(getRenderName(Hawk.get(HawkConfig.PLAY_RENDER, 0)));
+        tvHotVodSource.setText(getHotVodSourceName(Hawk.get(HawkConfig.HOT_VOD_SOURCE, 0)));
         findViewById(R.id.llXWalkCore).setVisibility(Hawk.get(HawkConfig.PARSE_WEBVIEW, true) ? View.GONE : View.VISIBLE);
         findViewById(R.id.llDebug).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -303,6 +306,41 @@ public class ModelSettingFragment extends BaseLazyFragment {
                 dialog.show();
             }
         });
+        findViewById(R.id.llHotVod).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                FastClickCheckUtil.check(v);
+                int defaultPos = Hawk.get(HawkConfig.HOT_VOD_SOURCE, 0);
+                ArrayList<Integer> sources = new ArrayList<>();
+                sources.add(0);
+                sources.add(1);
+                SelectDialog<Integer> dialog = new SelectDialog<>(mActivity);
+                dialog.setTip("请选热门视频数据源");
+                dialog.setAdapter(new SelectDialogAdapter.SelectDialogInterface<Integer>() {
+                    @Override
+                    public void click(Integer value, int pos) {
+                        Hawk.put(HawkConfig.HOT_VOD_SOURCE, value);
+                        tvHotVodSource.setText(getHotVodSourceName(value));
+                    }
+
+                    @Override
+                    public String getDisplay(Integer val) {
+                        return getHotVodSourceName(val);
+                    }
+                }, new DiffUtil.ItemCallback<Integer>() {
+                    @Override
+                    public boolean areItemsTheSame(@NonNull @NotNull Integer oldItem, @NonNull @NotNull Integer newItem) {
+                        return oldItem.intValue() == newItem.intValue();
+                    }
+
+                    @Override
+                    public boolean areContentsTheSame(@NonNull @NotNull Integer oldItem, @NonNull @NotNull Integer newItem) {
+                        return oldItem.intValue() == newItem.intValue();
+                    }
+                }, sources, defaultPos);
+                dialog.show();
+            }
+        });
         SettingActivity.callback = new SettingActivity.DevModeCallback() {
             @Override
             public void onChange() {
@@ -326,6 +364,14 @@ public class ModelSettingFragment extends BaseLazyFragment {
             return "SurfaceView";
         } else {
             return "TextureView";
+        }
+    }
+
+    private String getHotVodSourceName(int source) {
+        if (source == 1) {
+            return "豆瓣热榜";
+        } else {
+            return "历史记录";
         }
     }
 

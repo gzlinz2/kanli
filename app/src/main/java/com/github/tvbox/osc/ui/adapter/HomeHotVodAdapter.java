@@ -18,6 +18,9 @@ import me.jessyan.autosize.utils.AutoSizeUtils;
 
 public class HomeHotVodAdapter extends BaseQuickAdapter<HomeHotVodAdapter.HotVod, BaseViewHolder> {
     public static class HotVod {
+        String id;
+        String sourceKey;
+
         String name;
         String rate;
         String pic;
@@ -28,6 +31,20 @@ public class HomeHotVodAdapter extends BaseQuickAdapter<HomeHotVodAdapter.HotVod
             this.pic = pic;
         }
 
+        public HotVod(String id, String sourceKey, String name, String rate, String pic) {
+            this.id = id;
+            this.sourceKey = sourceKey;
+            this.name = name;
+            this.rate = rate;
+            this.pic = pic;
+        }
+
+        public String getId() {
+            return id;
+        }
+        public String getSourceKey() {
+            return sourceKey;
+        }
         public String getName() {
             return name;
         }
