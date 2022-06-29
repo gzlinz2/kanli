@@ -22,14 +22,19 @@ import com.github.tvbox.osc.ui.dialog.SelectDialog;
 import com.github.tvbox.osc.ui.dialog.XWalkInitDialog;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.OkGoHelper;
 import com.github.tvbox.osc.util.PlayerHelper;
 import com.github.tvbox.osc.util.XWalkUtils;
 import com.orhanobut.hawk.Hawk;
 
+import org.greenrobot.eventbus.EventBus;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import okhttp3.HttpUrl;
+import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 
 /**
  * @author pj567
@@ -42,10 +47,11 @@ public class ModelSettingFragment extends BaseLazyFragment {
     private TextView tvParseWebView;
     private TextView tvPlay;
     private TextView tvRender;
+    private TextView tvScale;
     private TextView tvXWalkDown;
     private TextView tvApi;
     private TextView tvHomeApi;
-    private TextView tvHotVodSource;
+    private TextView tvDns;
 
     public static ModelSettingFragment newInstance() {
         return new ModelSettingFragment().setArguments();
@@ -67,19 +73,21 @@ public class ModelSettingFragment extends BaseLazyFragment {
         tvMediaCodec = findViewById(R.id.tvMediaCodec);
         tvPlay = findViewById(R.id.tvPlay);
         tvRender = findViewById(R.id.tvRenderType);
+        tvScale = findViewById(R.id.tvScaleType);
         tvXWalkDown = findViewById(R.id.tvXWalkDown);
         tvApi = findViewById(R.id.tvApi);
         tvHomeApi = findViewById(R.id.tvHomeApi);
-        tvHotVodSource = findViewById(R.id.tvHotVodSource);
+        tvDns = findViewById(R.id.tvDns);
         tvMediaCodec.setText(Hawk.get(HawkConfig.IJK_CODEC, ""));
         tvDebugOpen.setText(Hawk.get(HawkConfig.DEBUG_OPEN, false) ? "已打开" : "已关闭");
         tvParseWebView.setText(Hawk.get(HawkConfig.PARSE_WEBVIEW, true) ? "系统自带" : "XWalkView");
         tvXWalkDown.setText(XWalkUtils.xWalkLibExist(mContext) ? "已下载" : "未下载");
         tvApi.setText(Hawk.get(HawkConfig.API_URL, ""));
+        tvDns.setText(OkGoHelper.dnsHttpsList.get(Hawk.get(HawkConfig.DOH_URL, 0)));
         tvHomeApi.setText(ApiConfig.get().getHomeSourceBean().getName());
-        tvPlay.setText(getPlayerName(Hawk.get(HawkConfig.PLAY_TYPE, 0)));
-        tvRender.setText(getRenderName(Hawk.get(HawkConfig.PLAY_RENDER, 0)));
-        tvHotVodSource.setText(getHotVodSourceName(Hawk.get(HawkConfig.HOT_VOD_SOURCE, 0)));
+        tvScale.setText(PlayerHelper.getScaleName(Hawk.get(HawkConfig.PLAY_SCALE, 0)));
+        tvPlay.setText(PlayerHelper.getPlayerName(Hawk.get(HawkConfig.PLAY_TYPE, 0)));
+        tvRender.setText(PlayerHelper.getRenderName(Hawk.get(HawkConfig.PLAY_RENDER, 0)));
         findViewById(R.id.llXWalkCore).setVisibility(Hawk.get(HawkConfig.PARSE_WEBVIEW, true) ? View.GONE : View.VISIBLE);
         findViewById(R.id.llDebug).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -168,11 +176,48 @@ public class ModelSettingFragment extends BaseLazyFragment {
                 }
             }
         });
+        findViewById(R.id.llDns).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                FastClickCheckUtil.check(v);
+                int dohUrl = Hawk.get(HawkConfig.DOH_URL, 0);
+
+                SelectDialog<String> dialog = new SelectDialog<>(mActivity);
+                dialog.setTip("请选择安全DNS");
+                dialog.setAdapter(new SelectDialogAdapter.SelectDialogInterface<String>() {
+                    @Override
+                    public void click(String value, int pos) {
+                        tvDns.setText(OkGoHelper.dnsHttpsList.get(pos));
+                        Hawk.put(HawkConfig.DOH_URL, pos);
+                        String url = OkGoHelper.getDohUrl(pos);
+                        OkGoHelper.dnsOverHttps.setUrl(url.isEmpty() ? null : HttpUrl.get(url));
+                        IjkMediaPlayer.toggleDotPort(pos > 0);
+                    }
+
+                    @Override
+                    public String getDisplay(String val) {
+                        return val;
+                    }
+                }, new DiffUtil.ItemCallback<String>() {
+                    @Override
+                    public boolean areItemsTheSame(@NonNull @NotNull String oldItem, @NonNull @NotNull String newItem) {
+                        return oldItem.equals(newItem);
+                    }
+
+                    @Override
+                    public boolean areContentsTheSame(@NonNull @NotNull String oldItem, @NonNull @NotNull String newItem) {
+                        return oldItem.equals(newItem);
+                    }
+                }, OkGoHelper.dnsHttpsList, dohUrl);
+                dialog.show();
+            }
+        });
         findViewById(R.id.llApi).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 FastClickCheckUtil.check(v);
                 ApiDialog dialog = new ApiDialog(mActivity);
+                EventBus.getDefault().register(dialog);
                 dialog.setOnListener(new ApiDialog.OnListener() {
                     @Override
                     public void onchange(String api) {
@@ -183,7 +228,8 @@ public class ModelSettingFragment extends BaseLazyFragment {
                 dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
                     @Override
                     public void onDismiss(DialogInterface dialog) {
-                        ((BaseActivity)mActivity).hideSysBar();
+                        ((BaseActivity) mActivity).hideSysBar();
+                        EventBus.getDefault().unregister(dialog);
                     }
                 });
                 dialog.show();
@@ -233,6 +279,45 @@ public class ModelSettingFragment extends BaseLazyFragment {
                 dialog.show();
             }
         });
+        findViewById(R.id.llScale).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                FastClickCheckUtil.check(v);
+                int defaultPos = Hawk.get(HawkConfig.PLAY_SCALE, 0);
+                ArrayList<Integer> players = new ArrayList<>();
+                players.add(0);
+                players.add(1);
+                players.add(2);
+                players.add(3);
+                players.add(4);
+                players.add(5);
+                SelectDialog<Integer> dialog = new SelectDialog<>(mActivity);
+                dialog.setTip("请选择默认画面缩放");
+                dialog.setAdapter(new SelectDialogAdapter.SelectDialogInterface<Integer>() {
+                    @Override
+                    public void click(Integer value, int pos) {
+                        Hawk.put(HawkConfig.PLAY_SCALE, value);
+                        tvScale.setText(PlayerHelper.getScaleName(value));
+                    }
+
+                    @Override
+                    public String getDisplay(Integer val) {
+                        return PlayerHelper.getScaleName(val);
+                    }
+                }, new DiffUtil.ItemCallback<Integer>() {
+                    @Override
+                    public boolean areItemsTheSame(@NonNull @NotNull Integer oldItem, @NonNull @NotNull Integer newItem) {
+                        return oldItem.intValue() == newItem.intValue();
+                    }
+
+                    @Override
+                    public boolean areContentsTheSame(@NonNull @NotNull Integer oldItem, @NonNull @NotNull Integer newItem) {
+                        return oldItem.intValue() == newItem.intValue();
+                    }
+                }, players, defaultPos);
+                dialog.show();
+            }
+        });
         findViewById(R.id.llPlay).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -248,13 +333,13 @@ public class ModelSettingFragment extends BaseLazyFragment {
                     @Override
                     public void click(Integer value, int pos) {
                         Hawk.put(HawkConfig.PLAY_TYPE, value);
-                        tvPlay.setText(getPlayerName(value));
+                        tvPlay.setText(PlayerHelper.getPlayerName(value));
                         PlayerHelper.init();
                     }
 
                     @Override
                     public String getDisplay(Integer val) {
-                        return getPlayerName(val);
+                        return PlayerHelper.getPlayerName(val);
                     }
                 }, new DiffUtil.ItemCallback<Integer>() {
                     @Override
@@ -284,13 +369,13 @@ public class ModelSettingFragment extends BaseLazyFragment {
                     @Override
                     public void click(Integer value, int pos) {
                         Hawk.put(HawkConfig.PLAY_RENDER, value);
-                        tvRender.setText(getRenderName(value));
+                        tvRender.setText(PlayerHelper.getRenderName(value));
                         PlayerHelper.init();
                     }
 
                     @Override
                     public String getDisplay(Integer val) {
-                        return getRenderName(val);
+                        return PlayerHelper.getRenderName(val);
                     }
                 }, new DiffUtil.ItemCallback<Integer>() {
                     @Override
@@ -306,73 +391,12 @@ public class ModelSettingFragment extends BaseLazyFragment {
                 dialog.show();
             }
         });
-        findViewById(R.id.llHotVod).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                FastClickCheckUtil.check(v);
-                int defaultPos = Hawk.get(HawkConfig.HOT_VOD_SOURCE, 0);
-                ArrayList<Integer> sources = new ArrayList<>();
-                sources.add(0);
-                sources.add(1);
-                SelectDialog<Integer> dialog = new SelectDialog<>(mActivity);
-                dialog.setTip("请选热门视频数据源");
-                dialog.setAdapter(new SelectDialogAdapter.SelectDialogInterface<Integer>() {
-                    @Override
-                    public void click(Integer value, int pos) {
-                        Hawk.put(HawkConfig.HOT_VOD_SOURCE, value);
-                        tvHotVodSource.setText(getHotVodSourceName(value));
-                    }
-
-                    @Override
-                    public String getDisplay(Integer val) {
-                        return getHotVodSourceName(val);
-                    }
-                }, new DiffUtil.ItemCallback<Integer>() {
-                    @Override
-                    public boolean areItemsTheSame(@NonNull @NotNull Integer oldItem, @NonNull @NotNull Integer newItem) {
-                        return oldItem.intValue() == newItem.intValue();
-                    }
-
-                    @Override
-                    public boolean areContentsTheSame(@NonNull @NotNull Integer oldItem, @NonNull @NotNull Integer newItem) {
-                        return oldItem.intValue() == newItem.intValue();
-                    }
-                }, sources, defaultPos);
-                dialog.show();
-            }
-        });
         SettingActivity.callback = new SettingActivity.DevModeCallback() {
             @Override
             public void onChange() {
                 findViewById(R.id.llDebug).setVisibility(View.VISIBLE);
             }
         };
-    }
-
-    private String getPlayerName(int playType) {
-        if (playType == 1) {
-            return "IJK播放器";
-        } else if (playType == 2) {
-            return "Exo播放器";
-        } else {
-            return "系统播放器";
-        }
-    }
-
-    private String getRenderName(int renderType) {
-        if (renderType == 1) {
-            return "SurfaceView";
-        } else {
-            return "TextureView";
-        }
-    }
-
-    private String getHotVodSourceName(int source) {
-        if (source == 1) {
-            return "豆瓣热榜";
-        } else {
-            return "历史记录";
-        }
     }
 
     @Override
